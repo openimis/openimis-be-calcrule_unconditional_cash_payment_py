@@ -1,6 +1,7 @@
+from django.contrib.contenttypes.models import ContentType
+
 from calcrule_unconditional_cash_payment.apps import AbsCalculationRule
 from calcrule_unconditional_cash_payment.config import CLASS_RULE_PARAM_VALIDATION, DESCRIPTION_CONTRIBUTION_VALUATION, FROM_TO
-from calcrule_unconditional_cash_payment.utils import *
 from calcrule_unconditional_cash_payment.converters import PolicyToBillConverter, PolicyToBillItemConverter
 
 from contribution_plan.models import PaymentPlan

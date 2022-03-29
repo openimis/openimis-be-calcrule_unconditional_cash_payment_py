@@ -13,7 +13,7 @@ from core import datetime
 class UnconditionalCashPaymentCalculationRule(AbsCalculationRule):
     version = 1
     uuid = "16bca786-1c12-4e8e-9cbf-e33c2a6d9f4f"
-    calculation_rule_name = "calculation: unconditional cash payment"
+    calculation_rule_name = "payment: unconditional cash payment"
     description = DESCRIPTION_CONTRIBUTION_VALUATION
     impacted_class_parameter = CLASS_RULE_PARAM_VALIDATION
     date_valid_from = datetime.datetime(2000, 1, 1)
@@ -48,7 +48,7 @@ class UnconditionalCashPaymentCalculationRule(AbsCalculationRule):
     @classmethod
     def active_for_object(cls, instance, context, type="account_payable", sub_type="cash_payment"):
         return instance.__class__.__name__ == "Policy" \
-               and context in ["policyCreated"] \
+               and context in ["PolicyCreated"] \
                and cls.check_calculation(instance)
 
     @classmethod
@@ -80,9 +80,12 @@ class UnconditionalCashPaymentCalculationRule(AbsCalculationRule):
             payment_plan = PaymentPlan.objects.filter(benefit_plan=product, calculation=cls.uuid, is_deleted=False)
             if payment_plan:
                 payment_plan = payment_plan.first()
-                cls.run_convert(instance=instance, context=context, convert_to='Bill', payment_plan=payment_plan,
+                cls.run_convert(instance=instance,
+                                context=context,
+                                convert_to='Bill',
+                                payment_plan=payment_plan,
                                 user=user)
-            return "conversion finished " + cls.calculation_rule_name
+            return f"conversion finished {cls.calculation_rule_name}"
 
     @classmethod
     def get_linked_class(cls, sender, class_name, **kwargs):
@@ -107,22 +110,36 @@ class UnconditionalCashPaymentCalculationRule(AbsCalculationRule):
         context = kwargs.get('context', None)
         payment_plan = kwargs.get('payment_plan')
         convert_results = {}
-        if context == "policyCreated":
-            lumpsum_to_be_paid = None
-            invoice_label = None
-            if 'calculation_rule' in payment_plan.json_ext:
-                calculation_rule_json_ext_dict = payment_plan.json_ext['calculation_rule']
-                if 'lumpsum_to_be_paid' in calculation_rule_json_ext_dict:
-                    lumpsum_to_be_paid = calculation_rule_json_ext_dict['lumpsum_to_be_paid']
-                if 'invoice_label' in calculation_rule_json_ext_dict:
-                    invoice_label = calculation_rule_json_ext_dict['invoice_label']
-
-            if convert_to == 'Bill':
-                convert_results['bill_data'] = PolicyToBillConverter.to_bill_obj(payment_plan, instance,
-                                                                                 lumpsum_to_be_paid, invoice_label)
-                convert_results['bill_data_line'] = [PolicyToBillItemConverter.to_bill_item_obj(instance,
-                                                                                                lumpsum_to_be_paid)]
+        if context == "PolicyCreated":
+            json_data = cls._get_data_from_json_ext(payment_plan)
+            convert_results = cls._convert_policies(convert_to, payment_plan, instance, json_data)
             convert_results['user'] = kwargs.get('user', None)
             convert_results['type_conversion'] = 'batch run policy - bill'
             BillService.bill_create(convert_results=convert_results)
         return convert_results
+
+    @classmethod
+    def _get_data_from_json_ext(cls, payment_plan):
+        json_data = {}
+        if 'calculation_rule' in payment_plan.json_ext:
+            calculation_rule_json_ext_dict = payment_plan.json_ext['calculation_rule']
+            if 'lumpsum_to_be_paid' in calculation_rule_json_ext_dict:
+                json_data['lumpsum_to_be_paid'] = calculation_rule_json_ext_dict['lumpsum_to_be_paid']
+            if 'invoice_label' in calculation_rule_json_ext_dict:
+                json_data['invoice_label'] = calculation_rule_json_ext_dict['invoice_label']
+        return json_data
+
+    @classmethod
+    def _convert_policies(cls, convert_to, payment_plan, instance, json_data):
+        convert_results = {}
+        if convert_to == 'Bill':
+            convert_results['bill_data'] = \
+                PolicyToBillConverter.to_bill_obj(payment_plan=payment_plan,
+                                                  policy=instance,
+                                                  lumpsum_to_be_paid=json_data['lumpsum_to_be_paid'],
+                                                  invoice_label=json_data['invoice_label'])
+            convert_results['bill_data_line'] = \
+                [PolicyToBillItemConverter.to_bill_item_obj(policy=instance,
+                                                            lumpsum_to_be_paid=json_data['lumpsum_to_be_paid'])]
+        return convert_results
+

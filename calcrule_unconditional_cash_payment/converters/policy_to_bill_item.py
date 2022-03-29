@@ -25,6 +25,7 @@ class PolicyToBillItemConverter:
     @classmethod
     def build_price(cls, bill_line_item, lumpsum_to_be_paid):
         bill_line_item["amount_total"] = lumpsum_to_be_paid
+        bill_line_item["unit_price"] = int(lumpsum_to_be_paid)
 
     @classmethod
     def build_code(cls, bill_line_item, policy):

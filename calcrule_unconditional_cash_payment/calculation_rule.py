@@ -6,6 +6,7 @@ from calcrule_unconditional_cash_payment.converters import PolicyToBillConverter
 
 from contribution_plan.models import PaymentPlan
 from invoice.services import BillService
+from core.models import User
 from core.signals import *
 from core import datetime
 
@@ -74,6 +75,8 @@ class UnconditionalCashPaymentCalculationRule(AbsCalculationRule):
     def calculate(cls, instance, **kwargs):
         context = kwargs.get('context', None)
         user = kwargs.get('user', None)
+        if user is None:
+            user = User.objects.filter(i_user__id=instance.audit_user_id).first()
         class_name = instance.__class__.__name__
         if class_name == "Policy":
             product = instance.product

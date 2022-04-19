@@ -36,6 +36,16 @@ CLASS_RULE_PARAM_VALIDATION = [
                 "default": "value"
             },
         ]
+    },
+    {
+        "class": "Product",
+        "parameters": [
+            ]
+    },
+    {
+        "class": "Family",
+        "parameters": [
+            ]
     }
 ]
 

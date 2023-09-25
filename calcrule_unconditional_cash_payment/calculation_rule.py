@@ -66,7 +66,7 @@ class UnconditionalCashPaymentCalculationRule(AbsCalculationRule):
             # if product → paymentPlans
             from product.models import Product
             content_type = ContentType.objects.get_for_model(Product)
-            payment_plans = PaymentPlan.objects.filter(benefit_plan_id=instance, benefit_plan_type=content_type, is_deleted=False)
+            payment_plans = PaymentPlan.objects.filter(benefit_plan_id=instance.id, benefit_plan_type=content_type, is_deleted=False)
             for pp in payment_plans:
                 if cls.check_calculation(pp):
                     match = True

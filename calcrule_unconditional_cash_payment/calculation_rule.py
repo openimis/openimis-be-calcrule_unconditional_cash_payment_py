@@ -64,7 +64,9 @@ class UnconditionalCashPaymentCalculationRule(AbsCalculationRule):
             match = cls.check_calculation(instance.product)
         elif class_name == "Product":
             # if product → paymentPlans
-            payment_plans = PaymentPlan.objects.filter(benefit_plan=instance, is_deleted=False)
+            from product.models import Product
+            content_type = ContentType.objects.get_for_model(Product)
+            payment_plans = PaymentPlan.objects.filter(benefit_plan_id=instance.id, benefit_plan_type=content_type, is_deleted=False)
             for pp in payment_plans:
                 if cls.check_calculation(pp):
                     match = True
@@ -79,8 +81,10 @@ class UnconditionalCashPaymentCalculationRule(AbsCalculationRule):
             user = User.objects.filter(i_user__id=instance.audit_user_id).first()
         class_name = instance.__class__.__name__
         if class_name == "Policy":
+            from product.models import Product
+            content_type = ContentType.objects.get_for_model(Product)
             product = instance.product
-            payment_plan = PaymentPlan.objects.filter(benefit_plan=product, calculation=cls.uuid, is_deleted=False)
+            payment_plan = PaymentPlan.objects.filter(benefit_plan_id=product.id, benefit_plan_type=content_type, calculation=cls.uuid, is_deleted=False)
             if payment_plan:
                 payment_plan = payment_plan.first()
                 cls.run_convert(instance=instance,
@@ -94,7 +98,7 @@ class UnconditionalCashPaymentCalculationRule(AbsCalculationRule):
     def get_linked_class(cls, sender, class_name, **kwargs):
         list_class = []
         if class_name is not None:
-            model_class = ContentType.objects.filter(model=class_name).first()
+            model_class = ContentType.objects.filter(model__iexact=class_name).first()
             if model_class:
                 model_class = model_class.model_class()
                 list_class = list_class + [f.remote_field.model.__name__ for f in model_class._meta.fields

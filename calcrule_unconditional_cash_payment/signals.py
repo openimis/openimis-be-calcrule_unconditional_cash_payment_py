@@ -19,6 +19,6 @@ def on_policy_create(**kwargs):
         if policy.status in [Policy.STATUS_IDLE, Policy.STATUS_ACTIVE]:
             user = User.objects.filter(i_user__id=policy.audit_user_id).first()
             # run calcrule for Bill if there is valid rule
-            return UnconditionalCashPaymentCalculationRule.signal_calculate_event.send(
+            return UnconditionalCashPaymentCalculationRule.run_calculation_rules(
                 sender=policy.__class__.__name__, instance=policy, user=user, context="PolicyCreated"
             )

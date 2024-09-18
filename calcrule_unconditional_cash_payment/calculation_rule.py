@@ -1,6 +1,6 @@
 from django.contrib.contenttypes.models import ContentType
 
-from calcrule_unconditional_cash_payment.apps import AbsStrategy
+from core.abs_calculation_rule import AbsStrategy
 from calcrule_unconditional_cash_payment.config import CLASS_RULE_PARAM_VALIDATION, DESCRIPTION_CONTRIBUTION_VALUATION, FROM_TO
 from calcrule_unconditional_cash_payment.converters import PolicyToBillConverter, PolicyToBillItemConverter
 
@@ -9,7 +9,7 @@ from invoice.services import BillService
 from core.models import User
 from core.signals import *
 from core import datetime
-
+from uuid import UUID
 
 class UnconditionalCashPaymentCalculationRule(AbsStrategy):
     version = 1
@@ -36,9 +36,9 @@ class UnconditionalCashPaymentCalculationRule(AbsStrategy):
         class_name = instance.__class__.__name__
         match = False
         if class_name == "ABCMeta":
-            match = str(cls.uuid) == str(instance.uuid)
-        elif class_name == "PaymentPlan":
-            match = str(cls.uuid) == str(instance.calculation)
+            match = UUID(cls.uuid) == UUID(instance.uuid)
+        if class_name == "PaymentPlan":
+            match = UUID(cls.uuid) == UUID(instance.calculation)
         elif class_name == "Policy":
             match = cls.check_calculation(instance.product)
         elif class_name == "Product":

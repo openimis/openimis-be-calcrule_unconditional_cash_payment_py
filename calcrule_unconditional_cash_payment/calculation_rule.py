@@ -1,4 +1,8 @@
+import json
+
 from django.contrib.contenttypes.models import ContentType
+from django.core.exceptions import ValidationError
+from django.utils.translation import gettext as _
 
 from core.abs_calculation_rule import AbsStrategy
 from calcrule_unconditional_cash_payment.config import CLASS_RULE_PARAM_VALIDATION, DESCRIPTION_CONTRIBUTION_VALUATION, FROM_TO
@@ -107,8 +111,13 @@ class UnconditionalCashPaymentCalculationRule(AbsStrategy):
     @classmethod
     def _get_data_from_json_ext(cls, payment_plan):
         json_data = {}
-        if 'calculation_rule' in payment_plan.json_ext:
-            calculation_rule_json_ext_dict = payment_plan.json_ext['calculation_rule']
+        json_ext = payment_plan.json_ext
+        # json_ext may be stored as a JSON string: parse it, or `in` would do a
+        # substring match on the raw text
+        if isinstance(json_ext, str):
+            json_ext = json.loads(json_ext) if json_ext.strip() else None
+        if isinstance(json_ext, dict) and isinstance(json_ext.get('calculation_rule'), dict):
+            calculation_rule_json_ext_dict = json_ext['calculation_rule']
             if 'lumpsum_to_be_paid' in calculation_rule_json_ext_dict:
                 json_data['lumpsum_to_be_paid'] = calculation_rule_json_ext_dict['lumpsum_to_be_paid']
             if 'invoice_label' in calculation_rule_json_ext_dict:
@@ -118,6 +127,13 @@ class UnconditionalCashPaymentCalculationRule(AbsStrategy):
     @classmethod
     def _convert_policies(cls, convert_to, payment_plan, instance, json_data):
         convert_results = {}
+        missing = [key for key in ('lumpsum_to_be_paid', 'invoice_label') if key not in json_data]
+        if missing:
+            raise ValidationError(
+                _("Payment plan %(code)s has no calculation_rule parameter: %(missing)s") % {
+                    "code": payment_plan.code, "missing": ", ".join(missing)
+                }
+            )
         if convert_to == 'Bill':
             convert_results['bill_data'] = \
                 PolicyToBillConverter.to_bill_obj(payment_plan=payment_plan,
